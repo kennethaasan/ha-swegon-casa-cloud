@@ -26,7 +26,7 @@ async def async_setup_entry(
 class SwegonCasaSummerCoolingActive(SwegonCasaEntity, BinarySensorEntity):
     """Report whether summer cooling is currently affecting the unit."""
 
-    _attr_name = "Summer cooling active"
+    _attr_translation_key = "summer_cooling_active"
     _attr_icon = "mdi:snowflake-thermometer"
 
     def __init__(self, coordinator: SwegonCasaCoordinator) -> None:

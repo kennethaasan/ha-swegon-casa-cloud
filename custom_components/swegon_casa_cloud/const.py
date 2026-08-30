@@ -21,15 +21,15 @@ MODE_REGISTER = 1039
 # values for automatic/startup states. Reads return the same value that the app
 # writes; this is not the 4x5001 operating-mode enum from the Modbus document.
 MODE_TO_WRITE_VALUE = {
-    "Travelling": 5,
-    "Away": 35,
-    "Home": 65,
-    "Home +": 80,
-    "Boost": 100,
+    "travelling": 5,
+    "away": 35,
+    "home": 65,
+    "home_plus": 80,
+    "boost": 100,
 }
 CONTROL_VALUE_TO_MODE = {
-    1: "Automatic",
-    2: "Starting",
+    1: "automatic",
+    2: "starting",
     **{value: mode for mode, value in MODE_TO_WRITE_VALUE.items()},
 }
 
@@ -43,19 +43,19 @@ CONTROL_SOURCE_REGISTER = 2146
 APPLICATION_REGISTER = 5042
 
 SUMMER_MODE_SETTING = {
-    0: "Off",
-    1: "Auto",
-    2: "Auto +",
+    0: "off",
+    1: "auto",
+    2: "auto_plus",
 }
 
 CONTROL_SOURCE = {
-    0: "External: ventilation stopped",
-    1: "External: Travelling",
-    2: "External: Away",
-    3: "External: Home",
-    4: "External: Home +",
-    5: "External: Boost",
-    7: "App / automatic control",
+    0: "external_stopped",
+    1: "external_travelling",
+    2: "external_away",
+    3: "external_home",
+    4: "external_home_plus",
+    5: "external_boost",
+    7: "app_automatic",
 }
 
 

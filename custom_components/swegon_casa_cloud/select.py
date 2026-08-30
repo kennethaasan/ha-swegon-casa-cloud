@@ -24,7 +24,7 @@ class SwegonCasaModeSelect(SwegonCasaEntity, SelectEntity):
     """Allow-list the safe operating modes exposed by the official app."""
 
     _attr_has_entity_name = True
-    _attr_name = "Ventilation mode"
+    _attr_translation_key = "ventilation_mode"
     _attr_icon = "mdi:air-filter"
     def __init__(self, coordinator: SwegonCasaCoordinator) -> None:
         super().__init__(coordinator)

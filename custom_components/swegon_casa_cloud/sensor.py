@@ -29,14 +29,14 @@ async def async_setup_entry(
                 coordinator,
                 key="summer_mode_setting",
                 unique_id_suffix="summer_mode_detection",
-                name="Summer mode setting",
+                translation_key="summer_mode_setting",
                 icon="mdi:weather-sunny",
                 value_map=SUMMER_MODE_SETTING,
             ),
             SwegonCasaNumericSensor(
                 coordinator,
                 key="summer_mode_boost",
-                name="Summer mode boost level",
+                translation_key="summer_mode_boost_level",
                 icon="mdi:fan-auto",
                 native_unit=PERCENTAGE,
             ),
@@ -44,7 +44,7 @@ async def async_setup_entry(
                 coordinator,
                 key="control_source",
                 unique_id_suffix="heating_state",
-                name="Ventilation control source",
+                translation_key="ventilation_control_source",
                 icon="mdi:swap-horizontal",
                 value_map=CONTROL_SOURCE,
             ),
@@ -61,14 +61,14 @@ class SwegonCasaMappedSensor(SwegonCasaEntity, SensorEntity):
         *,
         key: str,
         unique_id_suffix: str | None = None,
-        name: str,
+        translation_key: str,
         icon: str,
         value_map: dict[int, str],
     ) -> None:
         super().__init__(coordinator)
         self._key = key
         self._value_map = value_map
-        self._attr_name = name
+        self._attr_translation_key = translation_key
         self._attr_icon = icon
         self._attr_unique_id = f"{self._thing_id}_{unique_id_suffix or key}"
 
@@ -89,13 +89,13 @@ class SwegonCasaNumericSensor(SwegonCasaEntity, SensorEntity):
         coordinator: SwegonCasaCoordinator,
         *,
         key: str,
-        name: str,
+        translation_key: str,
         icon: str,
         native_unit: str,
     ) -> None:
         super().__init__(coordinator)
         self._key = key
-        self._attr_name = name
+        self._attr_translation_key = translation_key
         self._attr_icon = icon
         self._attr_native_unit_of_measurement = native_unit
         self._attr_unique_id = f"{self._thing_id}_{key}"

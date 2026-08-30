@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SwegonCasaApi, SwegonCasaError
@@ -43,7 +44,11 @@ class SwegonCasaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_mode(self, mode: str) -> None:
         """Set one allow-listed ventilation mode and verify the unit accepted it."""
         if mode not in MODE_TO_WRITE_VALUE:
-            raise ValueError(f"Unsupported Swegon CASA mode: {mode}")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="unsupported_mode",
+                translation_placeholders={"mode": mode},
+            )
         try:
             summary = await self.api.async_summary(self.thing_id)
             await self.hass.async_add_executor_job(
@@ -52,7 +57,10 @@ class SwegonCasaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 MODE_TO_WRITE_VALUE[mode],
             )
         except (SwegonCasaError, SwegonCasaMqttError) as error:
-            raise UpdateFailed("Unable to set Swegon CASA mode") from error
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="set_mode_failed",
+            ) from error
         self.async_set_updated_data(
             {**self.data, "summary": summary, "mode": MODE_TO_WRITE_VALUE[mode]}
         )

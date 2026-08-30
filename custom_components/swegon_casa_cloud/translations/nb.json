@@ -18,5 +18,59 @@
     "abort": {
       "already_configured": "Dette Swegon CASA-aggregatet er allerede konfigurert"
     }
+  },
+  "exceptions": {
+    "unsupported_mode": {
+      "message": "Swegon CASA-modusen støttes ikke: {mode}"
+    },
+    "set_mode_failed": {
+      "message": "Kunne ikke endre ventilasjonsmodusen for Swegon CASA"
+    }
+  },
+  "entity": {
+    "select": {
+      "ventilation_mode": {
+        "name": "Ventilasjonsmodus",
+        "state": {
+          "automatic": "Automatisk",
+          "starting": "Starter",
+          "travelling": "På reise",
+          "away": "Borte",
+          "home": "Hjemme",
+          "home_plus": "Hjemme +",
+          "boost": "Forsering"
+        }
+      }
+    },
+    "sensor": {
+      "summer_mode_setting": {
+        "name": "Innstilling for sommermodus",
+        "state": {
+          "off": "Av",
+          "auto": "Auto",
+          "auto_plus": "Auto +"
+        }
+      },
+      "summer_mode_boost_level": {
+        "name": "Forseringsnivå for sommermodus"
+      },
+      "ventilation_control_source": {
+        "name": "Styringskilde for ventilasjon",
+        "state": {
+          "external_stopped": "Ekstern: ventilasjon stoppet",
+          "external_travelling": "Ekstern: på reise",
+          "external_away": "Ekstern: borte",
+          "external_home": "Ekstern: hjemme",
+          "external_home_plus": "Ekstern: hjemme +",
+          "external_boost": "Ekstern: forsering",
+          "app_automatic": "App / automatisk styring"
+        }
+      }
+    },
+    "binary_sensor": {
+      "summer_cooling_active": {
+        "name": "Sommerkjøling aktiv"
+      }
+    }
   }
 }

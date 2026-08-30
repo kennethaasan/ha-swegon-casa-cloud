@@ -5,8 +5,9 @@ Genius ventilation units connected to the Swegon CASA mobile cloud.
 
 The integration exposes:
 
-- a bounded ventilation-mode selector (`Travelling`, `Away`, `Home`, `Home +`,
-  and `Boost`);
+- a bounded ventilation-mode selector with language-neutral service values
+  (`travelling`, `away`, `home`, `home_plus`, and `boost`) and translated
+  English/Norwegian labels;
 - the configured summer-mode setting and current summer boost level;
 - the current ventilation control source; and
 - a binary sensor showing when summer cooling is actively affecting the unit.
@@ -14,6 +15,17 @@ The integration exposes:
 Every mode write is allow-listed and read back from the unit before Home
 Assistant reports success. Transient modes such as startup and automatic
 control are read-only.
+
+## Language support
+
+The config flow, entity names, ventilation modes, summer-mode states, and
+control-source states are available in English and Norwegian Bokmål. Home
+Assistant displays the selected language, while scripts and automations use the
+stable lowercase values documented above.
+
+Version 0.5.0 changes the former English select values (`Home`, `Home +`,
+`Boost`, and so on) to their language-neutral equivalents. Update automations
+that call `select.select_option` when upgrading from 0.4.x.
 
 ## Status and compatibility
 
@@ -90,4 +102,3 @@ home, unit, topic, and token information before attaching logs.
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-

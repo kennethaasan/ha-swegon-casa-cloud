@@ -18,5 +18,59 @@
     "abort": {
       "already_configured": "This Swegon CASA unit is already configured"
     }
+  },
+  "exceptions": {
+    "unsupported_mode": {
+      "message": "Unsupported Swegon CASA mode: {mode}"
+    },
+    "set_mode_failed": {
+      "message": "Unable to set the Swegon CASA ventilation mode"
+    }
+  },
+  "entity": {
+    "select": {
+      "ventilation_mode": {
+        "name": "Ventilation mode",
+        "state": {
+          "automatic": "Automatic",
+          "starting": "Starting",
+          "travelling": "Travelling",
+          "away": "Away",
+          "home": "Home",
+          "home_plus": "Home +",
+          "boost": "Boost"
+        }
+      }
+    },
+    "sensor": {
+      "summer_mode_setting": {
+        "name": "Summer mode setting",
+        "state": {
+          "off": "Off",
+          "auto": "Auto",
+          "auto_plus": "Auto +"
+        }
+      },
+      "summer_mode_boost_level": {
+        "name": "Summer mode boost level"
+      },
+      "ventilation_control_source": {
+        "name": "Ventilation control source",
+        "state": {
+          "external_stopped": "External: ventilation stopped",
+          "external_travelling": "External: Travelling",
+          "external_away": "External: Away",
+          "external_home": "External: Home",
+          "external_home_plus": "External: Home +",
+          "external_boost": "External: Boost",
+          "app_automatic": "App / automatic control"
+        }
+      }
+    },
+    "binary_sensor": {
+      "summer_cooling_active": {
+        "name": "Summer cooling active"
+      }
+    }
   }
 }
