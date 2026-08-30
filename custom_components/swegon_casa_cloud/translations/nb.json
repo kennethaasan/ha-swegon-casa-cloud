@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Swegon CASA Cloud",
+        "description": "Oppgi de private mobilappverdiene som ble generert av oppsettsverktøyet i depotet.",
+        "data": {
+          "app_api_key": "API-nøkkel for mobilappen",
+          "refresh_token": "Oppdateringstoken"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan ikke koble til Swegon CASA",
+      "invalid_auth": "Swegon CASA-økten er ikke lenger gyldig",
+      "no_units": "Fant ingen Swegon CASA-aggregater"
+    },
+    "abort": {
+      "already_configured": "Dette Swegon CASA-aggregatet er allerede konfigurert"
+    }
+  }
+}
