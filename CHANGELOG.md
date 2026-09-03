@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add an observed OpenAPI reference for the public/mobile HTTP interfaces.
+- Add an AsyncAPI 3.1.0 reference for the Swegon CASA MQTT transport and
+  proprietary register frames.
+
 ## 0.5.0
 
 - Add complete English and Norwegian Bokmål entity-name and state translations.

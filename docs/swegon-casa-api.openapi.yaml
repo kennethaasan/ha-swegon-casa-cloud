@@ -1,0 +1,447 @@
+openapi: 3.0.3
+info:
+  title: Swegon CASA API (public and mobile-observed)
+  version: 1.10.0+mobile-observed
+  description: |-
+    Combined community reference for the Swegon CASA interfaces used by the
+    Home Assistant integration.
+
+    The /public endpoints are copied from Swegon's published OpenAPI document
+    (public API version 1.10.0) and are read-only telemetry and alarm endpoints.
+    The /mobile endpoints are observed from the Swegon CASA mobile cloud client
+    and the implementation in this repository. Swegon does not document those
+    mobile control interfaces as a supported consumer API. Mobile routes,
+    payloads, tokens, and the MQTT protocol may change without notice.
+
+    This is not an official Swegon API contract. Verify changes against a
+    non-critical test unit, keep the official CASA panel/app available, and
+    never put API keys, refresh tokens, MQTT tokens, serial numbers, or unit
+    identifiers in this repository.
+  contact:
+    name: ha-swegon-casa-cloud community
+    url: https://github.com/kennethaasan/ha-swegon-casa-cloud
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  x-public-api-version: 1.10.0
+  x-integration-version: 0.5.0
+  x-observed-at: 2026-09-03
+  x-source-notes:
+    - https://swegoncasa.com/public/swagger.json
+    - custom_components/swegon_casa_cloud/api.py
+    - custom_components/swegon_casa_cloud/mqtt.py
+  x-public-swagger-sha256: 0d3003fa820df640f7c20730e1d4b5c469d2419bcf1fb3ad629a262691bed8cf
+servers:
+  - url: https://swegoncasa.com
+    description: Swegon CASA cloud API
+externalDocs:
+  description: Official Swegon CASA public Swagger UI
+  url: https://swegoncasa.com/public/swagger-ui/index.html
+tags:
+  - name: Public telemetry
+    description: Official read-only telemetry endpoints.
+  - name: Public alarms
+    description: Official read-only alarm endpoints.
+  - name: Mobile account
+    description: Mobile-app endpoints observed by this integration.
+  - name: Mobile units
+    description: Mobile-app unit and connection-detail endpoints.
+x-swegon-mobile:
+  status: observed-not-official
+  app_user_agent: fi.swegon.ahu2020.mobile.resident;1.0.0.248;248;Home Assistant;Linux;0
+  authentication:
+    refresh:
+      method: POST
+      path: /mobile/user/refresh_access_token
+      api_key_header: X-API-Key
+      request_field: refreshToken
+      response_fields: [accessToken, refreshToken, expiresIn]
+    unit_requests:
+      authorization: Bearer accessToken
+      user_agent_header: User-Agent
+  mqtt:
+    description: |-
+      The mobile summary returns short-lived AWS IoT custom-authorizer
+      connection details. The integration uses MQTT 3.1.1 over TLS WebSockets
+      at path /mqtt; this transport is outside OpenAPI and is documented here
+      so protocol changes have one tracked reference.
+    websocket_path: /mqtt
+    protocol: MQTT 3.1.1 over secure WebSockets
+    user_agent: '?SDK=Android&Version=2.16.13'
+    custom_authorizer_headers:
+      X-Amz-CustomAuthorizer-Name: connectionDetails.customAuthorizer
+      dynamic-token-header: connectionDetails.tokenKeyName -> connectionDetails.token
+      X-Amz-CustomAuthorizer-Signature: connectionDetails.tokenSignature
+    topics:
+      request: up2020/{thing.group}/{thing.name}/req
+      response: up2020/{thing.group}/{thing.name}/res/{client_uuid}
+    frame_header: Little-endian uint16 transaction, uint16 request type, uint8 protocol version (1)
+    request_types:
+      read_register: 3
+      write_register: 2
+    register_encoding: Protobuf-like packed varints; signed values use zigzag encoding.
+    registers:
+      operating_mode: 1039
+      summer_mode_boost: 1043
+      summer_mode_setting: 1335
+      summer_mode_state: 2112
+      control_source: 2146
+      application: 5042
+    allowed_mode_values:
+      travelling: 5
+      away: 35
+      home: 65
+      home_plus: 80
+      boost: 100
+paths:
+  /public/alarms:
+    get:
+      tags: [Public alarms]
+      operationId: getPublicAlarms
+      summary: List alarms
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/SerialNumber'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - name: limit
+          in: query
+          required: false
+          description: Number of alarms to return. Default 10, minimum 1, maximum 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Alarms in the requested time range.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alarm'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/telemetry:
+    get:
+      tags: [Public telemetry]
+      operationId: getPublicTelemetry
+      summary: List telemetry data
+      description: Returns telemetry data for the given ventilation unit serial number.
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/SerialNumber'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - name: limit
+          in: query
+          required: false
+          description: Number of telemetry rows to return. Default 1, minimum 1, maximum 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 1
+      responses:
+        '200':
+          description: Telemetry rows with numeric register/value pairs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /mobile/user/refresh_access_token:
+    post:
+      tags: [Mobile account]
+      operationId: refreshAccessToken
+      summary: Refresh mobile API access credentials
+      description: |-
+        Observed mobile-app route. The refresh token rotates in some responses;
+        callers must persist the returned refreshToken securely. Never log or
+        commit any token.
+      security:
+        - mobileAppApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/AppUserAgent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Short-lived access token and possibly rotated refresh token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /mobile/thing:
+    get:
+      tags: [Mobile units]
+      operationId: listMobileThings
+      summary: List ventilation units for the account
+      description: Observed mobile-app route used during integration setup.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AppUserAgent'
+      responses:
+        '200':
+          description: Ventilation units associated with the account.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Thing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /mobile/thing/{thingId}/summary:
+    get:
+      tags: [Mobile units]
+      operationId: getMobileThingSummary
+      summary: Get unit summary and temporary MQTT connection details
+      description: |-
+        Observed mobile-app route. The response contains temporary connection
+        credentials. Treat the response as secret material and do not include
+        it in diagnostics, fixtures, or Git history.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ThingId'
+        - $ref: '#/components/parameters/AppUserAgent'
+        - name: language
+          in: query
+          required: false
+          description: Mobile summary language.
+          schema:
+            type: string
+            default: en
+      responses:
+        '200':
+          description: Unit summary and MQTT connection details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThingSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    publicApiKey:
+      type: apiKey
+      in: header
+      name: api-key
+      description: API key for Swegon's published public read-only API.
+    mobileAppApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Mobile app API key; do not store it in this repository.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Short-lived access token returned by the mobile refresh route.
+  parameters:
+    SerialNumber:
+      name: serialNumber
+      in: query
+      required: true
+      description: Ventilation unit serial number.
+      schema:
+        type: string
+    StartTime:
+      name: startTime
+      in: query
+      required: false
+      description: Inclusive start time in ISO 8601 UTC format.
+      schema:
+        type: string
+        format: date-time
+    EndTime:
+      name: endTime
+      in: query
+      required: false
+      description: Inclusive end time in ISO 8601 UTC format; takes precedence over startTime.
+      schema:
+        type: string
+        format: date-time
+    ThingId:
+      name: thingId
+      in: path
+      required: true
+      description: Swegon mobile thing identifier.
+      schema:
+        type: string
+    AppUserAgent:
+      name: User-Agent
+      in: header
+      required: true
+      description: User agent expected by the current mobile cloud client.
+      schema:
+        type: string
+      example: fi.swegon.ahu2020.mobile.resident;1.0.0.248;248;Home Assistant;Linux;0
+  responses:
+    BadRequest:
+      description: Invalid parameters.
+    Unauthorized:
+      description: Authentication failed or the access token expired.
+    Forbidden:
+      description: Request is not permitted.
+    NotFound:
+      description: Resource not found.
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+    ServerError:
+      description: Server error.
+  schemas:
+    Alarm:
+      type: object
+      required: [code, severity, time]
+      properties:
+        code:
+          type: integer
+          format: int32
+        severity:
+          $ref: '#/components/schemas/AlarmSeverity'
+        time:
+          type: string
+          format: date-time
+    AlarmSeverity:
+      type: string
+      enum: [NO_ALARM, INFO, WARNING, CRITICAL, UNKNOWN]
+    TelemetryResponse:
+      type: object
+      required: [telemetry]
+      properties:
+        telemetry:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelemetryRow'
+    TelemetryRow:
+      type: object
+      required: [time, values]
+      properties:
+        time:
+          type: string
+          format: date-time
+        values:
+          type: array
+          description: Register/value pairs; register meanings are device-specific.
+          items:
+            type: array
+            items:
+              type: integer
+              format: int32
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          format: password
+          description: Secret refresh token.
+    RefreshTokenResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          format: password
+        refreshToken:
+          type: string
+          format: password
+        expiresIn:
+          type: integer
+          description: Access-token lifetime in seconds.
+    Thing:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        nickname:
+          type: string
+        ahuName:
+          type: string
+        ahuSwVersion:
+          type: string
+        swVersion:
+          type: string
+    ThingSummary:
+      type: object
+      additionalProperties: true
+      required: [thing, connectionDetails]
+      properties:
+        thing:
+          $ref: '#/components/schemas/Thing'
+        connectionDetails:
+          $ref: '#/components/schemas/MqttConnectionDetails'
+    MqttConnectionDetails:
+      type: object
+      additionalProperties: true
+      description: Temporary AWS IoT custom-authorizer details; secret material.
+      required: [endpoint, customAuthorizer, tokenKeyName, token, tokenSignature]
+      properties:
+        endpoint:
+          type: string
+          description: MQTT WebSocket endpoint returned for this unit.
+        customAuthorizer:
+          type: string
+        tokenKeyName:
+          type: string
+          description: Name of the dynamic HTTP header carrying token.
+        token:
+          type: string
+          format: password
+        tokenSignature:
+          type: string
+          format: password

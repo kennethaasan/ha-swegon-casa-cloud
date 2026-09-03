@@ -71,6 +71,16 @@ or diagnostic downloads containing them in an issue.
 Swegon's documented, read-only telemetry and alarm API is available separately
 at <https://swegoncasa.com/public/swagger-ui/index.html>.
 
+## API references
+
+[`docs/swegon-casa-api.openapi.yaml`](docs/swegon-casa-api.openapi.yaml)
+records the published public REST API and the mobile REST routes observed by
+this integration. The MQTT transport is documented separately using the
+latest stable AsyncAPI specification in
+[`docs/swegon-casa-mqtt.asyncapi.yaml`](docs/swegon-casa-mqtt.asyncapi.yaml).
+The MQTT document describes the proprietary binary protocol and dynamic AWS
+IoT authorizer handshake; it contains no credentials or household identifiers.
+
 ## Safety
 
 Ventilation is building equipment. Keep the physical control panel and official
