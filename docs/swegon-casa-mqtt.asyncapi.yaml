@@ -14,6 +14,19 @@ info:
     protobuf-like payload; the schemas below describe the observed wire layout,
     not a full vendor protobuf definition.
 
+    MQTT application messages are bytes, not JSON. To read one, decode the
+    first five bytes as little-endian <HHB (transaction, request type, protocol
+    version), consume the 128-byte NUL-padded response topic on requests only,
+    and parse the remaining bytes as protobuf-style fields. Wire type 0 is an
+    unsigned varint and wire type 2 is a length-delimited field containing
+    packed varints. Register values and mode values use zigzag encoding where
+    explicitly noted below; the response status field does not.
+
+    A step-by-step decoder with byte offsets and Python reference code is in
+    docs/swegon-casa-mqtt-decoding.md. The integration implementation in
+    custom_components/swegon_casa_cloud/mqtt.py remains the executable source
+    of truth when the observed protocol and this document disagree.
+
     Temporary AWS IoT custom-authorizer values are deliberately represented
     only by their field names. Never put real endpoints, tokens, serial
     numbers, topics, or household identifiers in this file.
@@ -31,6 +44,55 @@ info:
   externalDocs:
     description: AsyncAPI 3.1.0 specification
     url: https://github.com/asyncapi/spec/blob/master/spec/asyncapi.md
+  x-decoder-guide: docs/swegon-casa-mqtt-decoding.md
+  x-wire-format:
+    payload_encoding: binary
+    json_payload: false
+    integer_encoding: unsigned_varint
+    byte_order: little_endian
+    frame_header:
+      size_bytes: 5
+      format: <HHB
+      fields:
+        - name: transaction
+          offset: 0
+          size_bytes: 2
+          type: uint16
+        - name: request_type
+          offset: 2
+          size_bytes: 2
+          type: uint16
+        - name: protocol_version
+          offset: 4
+          size_bytes: 1
+          type: uint8
+          observed_value: 1
+    request_layout:
+      - field: frame_header
+        offset: 0
+        size_bytes: 5
+      - field: response_topic
+        offset: 5
+        size_bytes: 128
+        encoding: latin-1
+        padding: NUL bytes
+      - field: protobuf_body
+        offset: 133
+        size_bytes: remaining
+    response_layout:
+      - field: frame_header
+        offset: 0
+        size_bytes: 5
+      - field: protobuf_body
+        offset: 5
+        size_bytes: remaining
+    protobuf_body:
+      field_key: (field_number << 3) | wire_type
+      supported_wire_types:
+        '0': varint
+        '2': length_delimited_packed_varints
+      packed_field: length-delimited bytes containing consecutive varints
+      unknown_fields: ignore only when the wire type can be safely skipped
 defaultContentType: application/octet-stream
 servers:
   casaAwsIot:
@@ -57,7 +119,10 @@ channels:
   casaRequests:
     address: up2020/{group}/{name}/req
     title: CASA gateway requests
-    description: Requests sent to the ventilation unit gateway.
+    description: |-
+      Requests sent to the ventilation unit gateway. The MQTT payload is a
+      binary application frame, not a JSON document. The topic variables are
+      taken from the authenticated mobile summary response.
     parameters:
       group:
         description: Value of thing.group returned by the mobile summary.
@@ -73,7 +138,11 @@ channels:
   casaResponses:
     address: up2020/{group}/{name}/res/{clientUuid}
     title: CASA gateway responses
-    description: Short-lived response topic created by the mobile client.
+    description: |-
+      Short-lived response topic created by the mobile client. The response
+      payload is binary and does not repeat the 128-byte response-topic field;
+      correlate it with the transaction and request type in the five-byte
+      response header.
     parameters:
       group:
         description: Value of thing.group returned by the mobile summary.
@@ -145,13 +214,23 @@ components:
       description: |-
         The integration constructs a frame with request type 3. The payload
         after the five-byte frame header is a protobuf-like packed field 1
-        containing [register, quantity], with quantity set to 1.
+        containing [register, quantity], with quantity set to 1. In a complete
+        request frame, the 128-byte response topic is between the header and
+        this body. For register 1039, the body is the illustrative hex sequence
+        `0a 03 8f 08 01` (field 1, length 3, varint(1039), varint(1)).
       contentType: application/octet-stream
       payload:
         $ref: '#/components/schemas/RawCasaFrame'
       x-wire-format:
         request_type: 3
-        body: packed field 1 containing [register, 1]
+        frame: header + response_topic[128] + body
+        body: field 1, wire type 2, packed unsigned varints [register, 1]
+        body_hex_example: 0a 03 8f 08 01
+        decode_steps:
+          - 0a = field 1, wire type 2
+          - 03 = packed body length
+          - 8f 08 = unsigned varint 1039
+          - 01 = unsigned varint quantity 1
     writeModeRequest:
       name: WriteModeRequest
       title: Write operating mode
@@ -159,16 +238,25 @@ components:
       description: |-
         The integration writes register 1039 only and verifies the resulting
         value by reading it back. Values are restricted to the allow-list in
-        the repository constants.
+        the repository constants. The message body is not a JSON object: it
+        contains field 1 with the register number, field 2 with quantity 1,
+        and field 3 with a packed zigzag-encoded mode value.
       contentType: application/octet-stream
       payload:
         $ref: '#/components/schemas/RawCasaFrame'
       x-wire-format:
         request_type: 2
+        frame: header + response_topic[128] + body
         fields:
-          field_1: register number 1039
-          field_2: quantity 1
-          field_3: packed zigzag-encoded mode value
+          field_1: wire type 0, register number 1039
+          field_2: wire type 0, quantity 1
+          field_3: wire type 2, packed zigzag-encoded mode value
+        body_hex_example:
+          boost_100: 08 8f 08 10 01 1a 02 c8 01
+        decode_steps:
+          - 08 8f 08 = field 1 and unsigned varint 1039
+          - 10 01 = field 2 and quantity 1
+          - 1a 02 c8 01 = field 3 and packed varint zigzag(100)
     gatewayResponse:
       name: GatewayResponse
       title: Swegon gateway response
@@ -176,19 +264,59 @@ components:
       description: |-
         Responses start with the same five-byte frame header. The protobuf-like
         body contains a status field and, for register reads, packed values
-        containing [register, quantity, value].
+        containing [register, quantity, value]. A successful read of register
+        1039 returning value 65 may have the illustrative body
+        `0a 05 9e 10 02 82 01 10 00`: field 1 contains zigzag-decoded values
+        [1039, 1, 65], and field 2 is status 0. Field order should not be
+        assumed; use field numbers.
       contentType: application/octet-stream
       payload:
         $ref: '#/components/schemas/RawCasaFrame'
       x-wire-format:
         response_header: transaction, request_type, protocol_version
-        status_field: field 2
-        read_values_field: field 1 containing [register, quantity, value]
+        status_field: field 2, wire type 0, unsigned status code (0 = success)
+        read_values_field: field 1, wire type 2, packed zigzag varints [register, quantity, value]
+        response_correlation:
+          transaction: must match the outstanding request
+          request_type: must match the outstanding request
+          protocol_version: observed value 1
+        body_hex_example:
+          read_1039_value_65: 0a 05 9e 10 02 82 01 10 00
+        decode_steps:
+          - 0a 05 = field 1, length-delimited packed body of 5 bytes
+          - 9e 10 = zigzag-decoded register 1039
+          - 02 = zigzag-decoded quantity 1
+          - 82 01 = zigzag-decoded value 65
+          - 10 00 = field 2 status 0
   schemas:
     RawCasaFrame:
       type: string
       format: byte
       description: Base64 representation of the complete raw MQTT binary frame; the wire format is not JSON.
+    FrameHeader:
+      type: object
+      description: Logical view of the five-byte little-endian frame header.
+      required: [transaction, request_type, protocol_version]
+      properties:
+        transaction:
+          type: integer
+          minimum: 0
+          maximum: 65535
+          description: uint16 little-endian correlation number.
+        request_type:
+          type: integer
+          minimum: 0
+          maximum: 65535
+          description: Request/response operation type; 3 reads a register and 2 writes the operating mode.
+        protocol_version:
+          type: integer
+          const: 1
+          description: Observed protocol version byte.
+    PackedVarints:
+      type: array
+      items:
+        type: integer
+      description: Logical representation of a wire type 2 packed field after its length and varints are decoded.
     ModeValues:
       type: object
       additionalProperties:

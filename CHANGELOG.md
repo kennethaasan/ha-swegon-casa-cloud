@@ -5,6 +5,8 @@
 - Add an observed OpenAPI reference for the public/mobile HTTP interfaces.
 - Add an AsyncAPI 3.1.0 reference for the Swegon CASA MQTT transport and
   proprietary register frames.
+- Expand the MQTT reference with binary frame offsets, varint/zigzag decoding,
+  hex examples, and a maintainer decoding guide.
 
 ## 0.5.0
 

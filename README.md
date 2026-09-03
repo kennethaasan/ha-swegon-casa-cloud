@@ -80,6 +80,9 @@ latest stable AsyncAPI specification in
 [`docs/swegon-casa-mqtt.asyncapi.yaml`](docs/swegon-casa-mqtt.asyncapi.yaml).
 The MQTT document describes the proprietary binary protocol and dynamic AWS
 IoT authorizer handshake; it contains no credentials or household identifiers.
+Because MQTT payloads are binary rather than JSON, the companion
+[`docs/swegon-casa-mqtt-decoding.md`](docs/swegon-casa-mqtt-decoding.md) gives
+the byte layout, varint rules, and safe reading examples.
 
 ## Safety
 
